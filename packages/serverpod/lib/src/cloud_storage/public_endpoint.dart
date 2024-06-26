@@ -28,7 +28,7 @@ class CloudStoragePublicEndpoint extends Endpoint {
     }
 
     // Get the mime type
-    var type = lookupMimeType(path);
+    var type = lookupMimeType(p.basename(path),headerBytes: file.buffer.asUint8List());
     if(type==null){
       response.statusCode = HttpStatus.notFound;
       return null;
