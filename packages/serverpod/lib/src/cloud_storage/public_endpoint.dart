@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod/src/generated/cloud_storage_direct_upload.dart';
@@ -18,7 +19,7 @@ class CloudStoragePublicEndpoint extends Endpoint {
 
     // Fetch the file from storage.
     var file =
-        await session.storage.retrieveFile(storageId: 'public', path: path);
+    await session.storage.retrieveFile(storageId: 'public', path: path);
 
     // Set the response code
     if (file == null) {
@@ -26,25 +27,17 @@ class CloudStoragePublicEndpoint extends Endpoint {
       return null;
     }
 
-    // TODO: Support more extension types.
-
-    var extension = p.extension(path);
-    extension = extension.toLowerCase();
-    if (extension == '.js') {
-      response.headers.contentType = ContentType('text', 'javascript');
-    } else if (extension == '.css') {
-      response.headers.contentType = ContentType('text', 'css');
-    } else if (extension == '.png') {
-      response.headers.contentType = ContentType('image', 'png');
-    } else if (extension == '.jpg') {
-      response.headers.contentType = ContentType('image', 'jpeg');
-    } else if (extension == '.svg') {
-      response.headers.contentType = ContentType('image', 'svg+xml');
-    } else if (extension == '.ttf') {
-      response.headers.contentType = ContentType('application', 'x-font-ttf');
-    } else if (extension == '.woff') {
-      response.headers.contentType = ContentType('application', 'x-font-woff');
+    // Get the mime type
+    var type = lookupMimeType(path);
+    if(type==null){
+      response.statusCode = HttpStatus.notFound;
+      return null;
     }
+
+    // Content type parse
+    var contentType = ContentType.parse(type);
+
+    response.headers.contentType = contentType;
 
     // Retrieve the file from storage and return it.
     return file;
@@ -55,9 +48,9 @@ class CloudStoragePublicEndpoint extends Endpoint {
       String key) async {
     // Confirm that we are allowed to do the upload
     var uploadInfo =
-        await session.db.findFirstRow<CloudStorageDirectUploadEntry>(
+    await session.db.findFirstRow<CloudStorageDirectUploadEntry>(
       where: CloudStorageDirectUploadEntry.t.storageId.equals(storageId) &
-          CloudStorageDirectUploadEntry.t.path.equals(path),
+      CloudStorageDirectUploadEntry.t.path.equals(path),
     );
 
     if (uploadInfo == null) return false;
